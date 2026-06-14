@@ -1,0 +1,14 @@
+{
+  "name": "@sulthonzh/fuzzyfind",
+  "version": "1.0.0",
+  "description": "Zero-dependency fuzzy string matching with scoring, filtering, and highlighting",
+  "main": "index.js",
+  "bin": {
+    "fuzzyfind": "cli.js"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": ["fuzzy", "match", "search", "filter", "fzf", "score", "highlight"],
+  "license": "MIT"
+}
