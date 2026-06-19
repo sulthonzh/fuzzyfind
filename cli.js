@@ -18,10 +18,17 @@
  *   --case-sensitive     Case sensitive matching
  *   --highlight-only     Output matched strings with highlighting (no scores)
  *   --score-only         Output scores only (one per line)
+ *   -V, --version        Show version
  *   -h, --help           Show help
  */
 
 const fuzzy = require('./index.js');
+const pkg = require('./package.json');
+
+function showVersion() {
+  console.log(pkg.version);
+  process.exit(0);
+}
 
 function showHelp() {
   const lines = [
@@ -70,6 +77,10 @@ function parseArgs(argv) {
       case '-h':
       case '--help':
         showHelp();
+        break;
+      case '-V':
+      case '--version':
+        showVersion();
         break;
       case '--file':
         opts.file = argv[++i];
@@ -170,15 +181,8 @@ async function main() {
 
   const useColor = opts.color && process.stdout.isTTY;
   for (const r of results) {
-    if (opts.highlightOnly || useColor) {
-      const highlighted = useColor
-        ? fuzzy.highlight(r.target, r.positions)
-        : r.target;
-      if (opts.highlightOnly && !useColor) {
-        console.log(r.target);
-      } else {
-        console.log(highlighted);
-      }
+    if (useColor) {
+      console.log(fuzzy.highlight(r.target, r.positions));
     } else {
       console.log(r.target);
     }

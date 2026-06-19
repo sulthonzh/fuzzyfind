@@ -311,6 +311,149 @@ test('multi-word query', () => {
   assert.ok(m);
 });
 
+// ---- Version flag ----
+
+test('version flag shows version', () => {
+  const { execSync } = require('child_process');
+  const out = execSync('node cli.js --version', { encoding: 'utf8' }).trim();
+  assert.ok(/^\d+\.\d+\.\d+$/.test(out), `Version should be semver, got: ${out}`);
+});
+
+test('-V short flag shows version', () => {
+  const { execSync } = require('child_process');
+  const out = execSync('node cli.js -V', { encoding: 'utf8' }).trim();
+  assert.ok(/^\d+\.\d+\.\d+$/.test(out), `Version should be semver, got: ${out}`);
+});
+
+// ---- Edge cases ----
+
+test('special regex chars in query are literal', () => {
+  // '.' should match literal dot, not any char
+  const m = fuzzy.match('.', 'a.b');
+  assert.ok(m);
+  assert.strictEqual(m.positions[0], 1); // matches the actual '.' at position 1
+});
+
+test('unicode characters match correctly', () => {
+  const m = fuzzy.match('cafe', 'café');
+  // 'café' contains 'c','a','f','é' — 'cafe' has 'c','a','f','e'
+  // 'e' !== 'é' so this should be null
+  assert.strictEqual(m, null);
+});
+
+test('exact unicode match', () => {
+  const m = fuzzy.match('caf', 'café');
+  assert.ok(m);
+  assert.deepStrictEqual(m.positions, [0, 1, 2]);
+});
+
+test('query with spaces matches across word boundary', () => {
+  const m = fuzzy.match('sr er', 'server error');
+  assert.ok(m);
+  assert.ok(m.positions.length === 5);
+});
+
+test('very long target string', () => {
+  const longStr = 'a'.repeat(10000) + 'needle' + 'b'.repeat(10000);
+  const m = fuzzy.match('needle', longStr);
+  assert.ok(m);
+  assert.deepStrictEqual(m.positions, [10000, 10001, 10002, 10003, 10004, 10005]);
+});
+
+test('single character query', () => {
+  const m = fuzzy.match('a', 'abc');
+  assert.ok(m);
+  assert.strictEqual(m.positions[0], 0);
+});
+
+test('repeated query chars exhaust target chars', () => {
+  // 'aaa' against 'aa' — query longer than available matches
+  const m = fuzzy.match('aaa', 'aa');
+  assert.strictEqual(m, null);
+});
+
+test('filter preserves original objects', () => {
+  const items = [
+    { name: 'Alice', id: 1 },
+    { name: 'Bob', id: 2 },
+  ];
+  const results = fuzzy.filter('ali', items, { key: 'name' });
+  assert.strictEqual(results[0].item.id, 1);
+  assert.strictEqual(results[0].item.name, 'Alice');
+});
+
+test('filter with numeric values via String conversion', () => {
+  const results = fuzzy.filter('12', [123, 456, 127]);
+  assert.ok(results.length >= 1);
+  assert.ok(results[0].target.includes('12'));
+});
+
+test('highlightRanges handles out-of-order positions', () => {
+  // positions should be sorted for correct highlighting
+  const ranges = fuzzy.highlightRanges([2, 0], 4);
+  assert.deepStrictEqual(ranges, [
+    { start: 0, end: 1, matched: true },
+    { start: 1, end: 2, matched: false },
+    { start: 2, end: 3, matched: true },
+    { start: 3, end: 4, matched: false },
+  ]);
+});
+
+test('match returns consistent score for same input', () => {
+  const m1 = fuzzy.match('abc', 'abcdef');
+  const m2 = fuzzy.match('abc', 'abcdef');
+  assert.strictEqual(m1.score, m2.score);
+});
+
+test('filter empty targets array', () => {
+  const results = fuzzy.filter('test', []);
+  assert.strictEqual(results.length, 0);
+});
+
+test('isMatch with case sensitive and special chars', () => {
+  assert.strictEqual(fuzzy.isMatch('test', 'test/file.js', { caseSensitive: true }), true);
+  assert.strictEqual(fuzzy.isMatch('TEST', 'test/file.js', { caseSensitive: true }), false);
+});
+
+test('filter limit larger than results', () => {
+  const results = fuzzy.filter('a', ['abc', 'def'], { limit: 10 });
+  assert.strictEqual(results.length, 1);
+});
+
+test('match with all uppercase target', () => {
+  const m = fuzzy.match('abc', 'ABC');
+  assert.ok(m);
+  assert.deepStrictEqual(m.positions, [0, 1, 2]);
+});
+
+test('highlight with empty string', () => {
+  assert.strictEqual(fuzzy.highlight('', []), '');
+});
+
+// ---- CLI Integration ----
+
+test('CLI --list outputs matching results', () => {
+  const { execSync } = require('child_process');
+  const out = execSync('node cli.js ser --list "server,client,service,utils"', {
+    encoding: 'utf8',
+  }).trim();
+  const lines = out.split('\n');
+  assert.ok(lines.length >= 2);
+  assert.ok(lines[0].includes('server') || lines[0].includes('service'));
+});
+
+test('CLI --json outputs valid JSON', () => {
+  const { execSync } = require('child_process');
+  const out = execSync('node cli.js test --list "testing,toast" --json', {
+    encoding: 'utf8',
+  }).trim();
+  const parsed = JSON.parse(out);
+  assert.ok(Array.isArray(parsed));
+  assert.ok(parsed.length >= 1);
+  assert.ok(parsed[0].target);
+  assert.ok(typeof parsed[0].score === 'number');
+});
+
 // ---- Summary ----
 
 console.log(`\n${passed} passed, ${failed} failed`);
