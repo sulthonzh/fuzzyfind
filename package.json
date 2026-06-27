@@ -14,6 +14,23 @@
     "test": "node test.js",
     "prepublishOnly": "npm test"
   },
-  "keywords": ["fuzzy", "match", "search", "filter", "fzf", "score", "highlight"],
-  "license": "MIT"
+  "keywords": [
+    "fuzzy",
+    "match",
+    "search",
+    "filter",
+    "fzf",
+    "score",
+    "highlight"
+  ],
+  "license": "MIT",
+  "files": [
+    "index.js",
+    "cli.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

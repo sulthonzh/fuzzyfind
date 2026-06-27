@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# build
+dist/
+build/
+
+# env
+.env
+.env.*
+
+# logs
+*.log
+
+# os
+.DS_Store
+
+# test
+coverage/
+
+# python
+__pycache__/
+.venv/
+*.egg-info/
+.mypy_cache/
