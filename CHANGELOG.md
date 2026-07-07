@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.1 (2026-07-08)
+
+### Fixed
+- `match()` now returns `null` for non-string inputs instead of throwing TypeError
+- `filter()` skips `null`/`undefined` entries instead of matching `String(null)`
+- `filter()` with `key` option skips objects where the key is missing or null
+- `highlight()` filters out-of-range positions instead of producing broken output
+- `highlight()` returns empty string for empty input without crashing
+
+### Added
+- 18 edge-case tests (67 → 85): input type validation, null/undefined entry handling,
+  missing object key handling, position bounds validation, Unicode surrogate pairs,
+  duplicate positions, CLI score-only and case-sensitive integration tests
+
 ## v1.1.0 (2026-06-19)
 
 ### Added

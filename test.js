@@ -454,6 +454,136 @@ test('CLI --json outputs valid JSON', () => {
   assert.ok(typeof parsed[0].score === 'number');
 });
 
+// ---- Input validation ----
+
+test('match returns null for non-string query', () => {
+  assert.strictEqual(fuzzy.match(123, 'abc'), null);
+  assert.strictEqual(fuzzy.match(null, 'abc'), null);
+  assert.strictEqual(fuzzy.match(undefined, 'abc'), null);
+  assert.strictEqual(fuzzy.match({}, 'abc'), null);
+});
+
+test('match returns null for non-string target', () => {
+  assert.strictEqual(fuzzy.match('abc', 123), null);
+  assert.strictEqual(fuzzy.match('abc', null), null);
+  assert.strictEqual(fuzzy.match('abc', undefined), null);
+});
+
+test('filter skips null and undefined entries', () => {
+  const results = fuzzy.filter('test', [null, undefined, 'testing', null, 'toast']);
+  assert.strictEqual(results.length, 1);
+  assert.strictEqual(results[0].target, 'testing');
+});
+
+test('filter skips objects with missing key', () => {
+  const results = fuzzy.filter('test', [
+    { name: 'testing' },
+    { foo: 'bar' },
+    { name: 'toast' },
+  ], { key: 'name' });
+  assert.strictEqual(results.length, 1);
+  assert.strictEqual(results[0].item.name, 'testing');
+});
+
+test('filter skips objects with null key value', () => {
+  const results = fuzzy.filter('test', [
+    { name: null },
+    { name: 'testing' },
+    { name: undefined },
+  ], { key: 'name' });
+  assert.strictEqual(results.length, 1);
+});
+
+test('highlight handles positions beyond string length', () => {
+  // Should filter out-of-range positions without crashing
+  const result = fuzzy.highlight('ab', [0, 5, 10]);
+  // Only position 0 is valid, should highlight just 'a'
+  assert.ok(result.startsWith('\x1b[32ma\x1b[0m'));
+  assert.ok(result.endsWith('b'));
+});
+
+test('highlight with empty string returns empty', () => {
+  assert.strictEqual(fuzzy.highlight('', [0, 1]), '');
+});
+
+test('highlight with negative positions filters them out', () => {
+  const result = fuzzy.highlight('abc', [-1, 0, -5]);
+  // Only position 0 is valid, should highlight just 'a'
+  assert.ok(result.startsWith('\x1b[32ma\x1b[0m'));
+});
+
+test('match with very long query returns null quickly', () => {
+  // Query longer than target should fail fast
+  assert.strictEqual(fuzzy.match('a'.repeat(100), 'short'), null);
+});
+
+test('filter with zero limit returns empty', () => {
+  const results = fuzzy.filter('a', ['abc', 'def'], { limit: 0 });
+  // limit=0 means no limit (default), so should return all matches
+  assert.strictEqual(results.length, 1);
+});
+
+test('filter numeric entries via String conversion', () => {
+  const results = fuzzy.filter('12', [123, 456, 127]);
+  assert.ok(results.length >= 1);
+  assert.ok(results[0].target.includes('12'));
+});
+
+test('match with only special characters in query', () => {
+  const m = fuzzy.match('...', 'a.b.c.d');
+  assert.ok(m);
+  assert.strictEqual(m.positions.length, 3);
+});
+
+test('match handles Unicode surrogate pairs', () => {
+  // Emoji strings should not crash
+  const m = fuzzy.match('a', 'a🎉b');
+  assert.ok(m);
+  assert.strictEqual(m.positions[0], 0);
+});
+
+test('filter with duplicate entries preserves all', () => {
+  const results = fuzzy.filter('test', ['testing', 'testing', 'testing']);
+  assert.strictEqual(results.length, 3);
+});
+
+test('isMatch with non-string inputs returns false', () => {
+  assert.strictEqual(fuzzy.isMatch(123, 'abc'), false);
+  assert.strictEqual(fuzzy.isMatch('abc', null), false);
+});
+
+test('highlightRanges with duplicate positions', () => {
+  const ranges = fuzzy.highlightRanges([0, 0, 1], 3);
+  // Duplicates should be handled by Set
+  assert.deepStrictEqual(ranges, [
+    { start: 0, end: 2, matched: true },
+    { start: 2, end: 3, matched: false },
+  ]);
+});
+
+test('CLI --score-only outputs numeric scores', () => {
+  const { execSync } = require('child_process');
+  const out = execSync('node cli.js test --list "testing,toast" --score-only', {
+    encoding: 'utf8', timeout: 5000,
+  }).trim();
+  const lines = out.split('\n');
+  assert.ok(lines.length >= 1);
+  assert.ok(!isNaN(parseFloat(lines[0])));
+});
+
+test('CLI --case-sensitive filters differently', () => {
+  const { execSync } = require('child_process');
+  const caseInsensitive = execSync('node cli.js ABC --list "abc,ABC" --json', {
+    encoding: 'utf8', timeout: 5000,
+  }).trim();
+  const caseSensitive = execSync('node cli.js ABC --list "abc,ABC" --case-sensitive --json', {
+    encoding: 'utf8', timeout: 5000,
+  }).trim();
+  const ci = JSON.parse(caseInsensitive);
+  const cs = JSON.parse(caseSensitive);
+  assert.ok(ci.length > cs.length, 'Case-sensitive should match fewer');
+});
+
 // ---- Summary ----
 
 console.log(`\n${passed} passed, ${failed} failed`);

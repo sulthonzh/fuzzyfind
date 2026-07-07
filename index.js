@@ -65,6 +65,9 @@ const PENALTY_UNMATCHED = -0.1;
  * @returns {{ score: number, positions: number[] } | null}
  */
 function match(query, target, opts) {
+  if (typeof query !== 'string' || typeof target !== 'string') {
+    return null;
+  }
   if (!query || !target) {
     return query === '' ? { score: 0, positions: [] } : null;
   }
@@ -222,7 +225,14 @@ function filter(query, targets, opts) {
   const results = [];
   for (let i = 0; i < targets.length; i++) {
     const entry = targets[i];
-    const targetStr = key ? entry[key] : (typeof entry === 'string' ? entry : String(entry));
+    if (entry == null) continue;
+    let targetStr;
+    if (key) {
+      if (entry[key] == null) continue;
+      targetStr = String(entry[key]);
+    } else {
+      targetStr = typeof entry === 'string' ? entry : String(entry);
+    }
 
     const m = match(query, targetStr, opts);
     if (m) {
@@ -280,9 +290,12 @@ function highlightRanges(positions, length) {
  * @returns {string}
  */
 function highlight(str, positions, ansi, reset) {
+  if (typeof str !== 'string' || str.length === 0) return str || '';
   ansi = ansi || '\x1b[32m';
   reset = reset || '\x1b[0m';
-  const ranges = highlightRanges(positions, str.length);
+  // Filter positions to valid range only
+  const validPositions = positions.filter((p) => p >= 0 && p < str.length);
+  const ranges = highlightRanges(validPositions, str.length);
   let result = '';
   for (const r of ranges) {
     const segment = str.slice(r.start, r.end);
