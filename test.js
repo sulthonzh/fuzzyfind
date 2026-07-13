@@ -1,7 +1,11 @@
 'use strict';
 
+const path = require('path');
+
 const fuzzy = require('./index.js');
 const assert = require('assert');
+
+const cliPath = path.join(__dirname, 'cli.js');
 
 let passed = 0;
 let failed = 0;
@@ -315,13 +319,13 @@ test('multi-word query', () => {
 
 test('version flag shows version', () => {
   const { execSync } = require('child_process');
-  const out = execSync('node cli.js --version', { encoding: 'utf8' }).trim();
+  const out = execSync(`node "${cliPath}" --version`, { encoding: 'utf8' }).trim();
   assert.ok(/^\d+\.\d+\.\d+$/.test(out), `Version should be semver, got: ${out}`);
 });
 
 test('-V short flag shows version', () => {
   const { execSync } = require('child_process');
-  const out = execSync('node cli.js -V', { encoding: 'utf8' }).trim();
+  const out = execSync(`node "${cliPath}" -V`, { encoding: 'utf8' }).trim();
   assert.ok(/^\d+\.\d+\.\d+$/.test(out), `Version should be semver, got: ${out}`);
 });
 
@@ -434,7 +438,7 @@ test('highlight with empty string', () => {
 
 test('CLI --list outputs matching results', () => {
   const { execSync } = require('child_process');
-  const out = execSync('node cli.js ser --list "server,client,service,utils"', {
+  const out = execSync(`node "${cliPath}" ser --list "server,client,service,utils"`, {
     encoding: 'utf8',
   }).trim();
   const lines = out.split('\n');
@@ -444,7 +448,7 @@ test('CLI --list outputs matching results', () => {
 
 test('CLI --json outputs valid JSON', () => {
   const { execSync } = require('child_process');
-  const out = execSync('node cli.js test --list "testing,toast" --json', {
+  const out = execSync(`node "${cliPath}" test --list "testing,toast" --json`, {
     encoding: 'utf8',
   }).trim();
   const parsed = JSON.parse(out);
@@ -563,7 +567,7 @@ test('highlightRanges with duplicate positions', () => {
 
 test('CLI --score-only outputs numeric scores', () => {
   const { execSync } = require('child_process');
-  const out = execSync('node cli.js test --list "testing,toast" --score-only', {
+  const out = execSync(`node "${cliPath}" test --list "testing,toast" --score-only`, {
     encoding: 'utf8', timeout: 5000,
   }).trim();
   const lines = out.split('\n');
@@ -573,10 +577,10 @@ test('CLI --score-only outputs numeric scores', () => {
 
 test('CLI --case-sensitive filters differently', () => {
   const { execSync } = require('child_process');
-  const caseInsensitive = execSync('node cli.js ABC --list "abc,ABC" --json', {
+  const caseInsensitive = execSync(`node "${cliPath}" ABC --list "abc,ABC" --json`, {
     encoding: 'utf8', timeout: 5000,
   }).trim();
-  const caseSensitive = execSync('node cli.js ABC --list "abc,ABC" --case-sensitive --json', {
+  const caseSensitive = execSync(`node "${cliPath}" ABC --list "abc,ABC" --case-sensitive --json`, {
     encoding: 'utf8', timeout: 5000,
   }).trim();
   const ci = JSON.parse(caseInsensitive);
